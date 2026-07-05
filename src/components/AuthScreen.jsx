@@ -46,7 +46,12 @@ export default function AuthScreen() {
     setIsSubmitting(true);
     try {
       if (mode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          // 確認メールのリンクを登録操作を行ったサイト（本番/ローカル）に戻す
+          options: { emailRedirectTo: window.location.origin }
+        });
         if (error) {
           setErrorMessage(translateAuthError(error.message));
         } else if (data.session) {
