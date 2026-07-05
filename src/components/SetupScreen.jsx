@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, ArrowRight, ChevronRight, Sliders, Check, Bookmark, RotateCcw } from 'lucide-react';
+import { Sparkles, ArrowRight, ChevronRight, Sliders, Check, Bookmark, RotateCcw, Wand2 } from 'lucide-react';
 import { GRAMMAR_CATEGORIES, GRAMMAR_GROUPS } from '../data/grammarData';
 
 const TIME_LIMIT_OPTIONS = [5, 10, 20, 0]; // 0は無制限
@@ -35,6 +35,8 @@ const SCENE_OPTIONS = [
 export default function SetupScreen({
   settings,
   updateSettings,
+  englishVoices,
+  isGenerating,
   bookmarkedCount,
   dueCount,
   onStart,
@@ -190,6 +192,27 @@ export default function SetupScreen({
               トレーニング設定
             </h3>
 
+            {/* AI問題生成トグル */}
+            <div className="space-y-2">
+              <button
+                onClick={() => updateSettings({ useAI: !settings.useAI })}
+                className={`w-full p-3 rounded-xl border text-left transition flex items-center justify-between gap-3 ${settings.useAI ? 'bg-purple-600/10 border-purple-500/40 text-white' : 'bg-slate-950/40 border-slate-900 text-slate-400 hover:border-slate-800'}`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Wand2 className={`w-4 h-4 ${settings.useAI ? 'text-purple-400' : 'text-slate-600'}`} />
+                  <div>
+                    <div className="font-bold text-xs">AI問題生成</div>
+                    <div className="text-[9px] text-slate-500 mt-0.5">
+                      毎回新しい英文をAIが生成（失敗時はプリセットから出題）
+                    </div>
+                  </div>
+                </div>
+                <div className={`w-9 h-5 rounded-full p-0.5 transition-colors shrink-0 ${settings.useAI ? 'bg-purple-600' : 'bg-slate-800'}`}>
+                  <div className={`w-4 h-4 rounded-full bg-white transition-transform ${settings.useAI ? 'translate-x-4' : ''}`} />
+                </div>
+              </button>
+            </div>
+
             {/* 制限時間 */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 flex justify-between items-center">
@@ -256,6 +279,33 @@ export default function SetupScreen({
                 <span>ネイティブ速め</span>
               </div>
             </div>
+
+            {/* 読み上げ音声の選択 */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400">🎙 読み上げ音声</label>
+              <select
+                value={settings.voiceURI}
+                onChange={e => updateSettings({ voiceURI: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-900 focus:border-indigo-500 rounded-xl py-2 px-3 text-xs text-slate-200 outline-none transition cursor-pointer"
+              >
+                <option value="">自動選択（最も自然な音声）</option>
+                {englishVoices.map(voice => (
+                  <option key={voice.voiceURI} value={voice.voiceURI}>
+                    {voice.name} ({voice.lang})
+                  </option>
+                ))}
+              </select>
+              {englishVoices.length === 0 ? (
+                <p className="text-[10px] text-rose-400 leading-snug">
+                  ⚠ このブラウザに英語音声が見つかりません。日本語音声で英文が読まれると不自然な発音になります。
+                  Microsoft Edgeで開くか、Windowsの「設定 &gt; 時刻と言語 &gt; 音声認識」から英語の音声パックを追加してください。
+                </p>
+              ) : (
+                <p className="text-[10px] text-slate-500 italic leading-snug">
+                  ※ Microsoft Edgeでは「Natural」音声が利用でき、最も自然な発音になります。
+                </p>
+              )}
+            </div>
           </div>
 
           {/* 復習ブックマーク */}
@@ -290,14 +340,23 @@ export default function SetupScreen({
           {/* トレーニング開始 */}
           <button
             onClick={() => onStart({ categoryKeys: selectedCategories })}
-            disabled={selectedCategories.length === 0}
+            disabled={selectedCategories.length === 0 || isGenerating}
             className="w-full relative group overflow-hidden bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 text-white rounded-2xl p-4 font-extrabold text-base transition-all duration-300 shadow-xl shadow-indigo-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <div className="absolute inset-0 w-full h-full bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
             <div className="flex items-center justify-center gap-2">
-              <Sparkles className="w-5 h-5 animate-pulse" />
-              <span>トレーニング開始</span>
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              {isGenerating ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>AI問題セットを生成中...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5 animate-pulse" />
+                  <span>トレーニング開始</span>
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </div>
           </button>
         </div>

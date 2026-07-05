@@ -1,5 +1,4 @@
 import { Award, Bookmark, RotateCcw } from 'lucide-react';
-import { QUESTION_LOOKUP } from '../data/grammarData';
 
 const RATING_LABELS = {
   perfect: { label: '完璧！', className: 'text-emerald-400' },
@@ -10,7 +9,8 @@ const RATING_LABELS = {
 export default function StatsScreen({
   totalStats,
   sessionEvals,
-  bookmarkedKeys,
+  bookmarkedRows,
+  questionFromRow,
   dueCount,
   onToggleBookmark,
   onRestart,
@@ -95,13 +95,13 @@ export default function StatsScreen({
         )}
 
         {/* 復習ブックマーク一覧 */}
-        {bookmarkedKeys.length > 0 && (
+        {bookmarkedRows.length > 0 && (
           <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl space-y-3">
             <div className="flex items-start gap-3">
               <Bookmark className="w-5 h-5 text-amber-500 shrink-0 mt-0.5 fill-current" />
               <div>
                 <h4 className="text-xs font-bold text-amber-400">
-                  現在 {bookmarkedKeys.length} 問が「復習ブック」に登録されています
+                  現在 {bookmarkedRows.length} 問が「復習ブック」に登録されています
                 </h4>
                 <p className="text-[10px] text-slate-400 mt-0.5">
                   「言えなかった」問題や「惜しい」評価の問題は、次回以降ピンポイントに反復練習が可能です。
@@ -110,11 +110,11 @@ export default function StatsScreen({
             </div>
 
             <div className="max-h-[160px] overflow-y-auto space-y-2 bg-slate-950/40 p-3 rounded-xl border border-slate-900">
-              {bookmarkedKeys.map((key, index) => {
-                const question = QUESTION_LOOKUP.get(key);
+              {bookmarkedRows.map((row, index) => {
+                const question = questionFromRow(row);
                 if (!question) return null;
                 return (
-                  <div key={key} className="flex justify-between items-center text-[10px] border-b border-slate-900 pb-2 last:border-b-0 last:pb-0 gap-4">
+                  <div key={row.question_key} className="flex justify-between items-center text-[10px] border-b border-slate-900 pb-2 last:border-b-0 last:pb-0 gap-4">
                     <div className="text-slate-300">
                       <span className="text-slate-500 font-bold">{index + 1}.</span> {question.japanese}
                     </div>
@@ -140,7 +140,7 @@ export default function StatsScreen({
             新しいトレーニングを始める
           </button>
 
-          {bookmarkedKeys.length > 0 && (
+          {bookmarkedRows.length > 0 && (
             <button
               onClick={onStartBookmarkReview}
               className="flex-1 bg-slate-950 hover:bg-indigo-950/20 text-indigo-400 border border-indigo-500/20 font-extrabold py-3.5 rounded-2xl text-xs transition"

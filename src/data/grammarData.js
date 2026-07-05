@@ -1,5 +1,6 @@
 // 文法カテゴリと問題バンク
 // 例文は「毎回違う出題」を実現するため各カテゴリ複数問を収録している
+import { ADDITIONAL_EXAMPLES } from './additionalExamples';
 
 export const GRAMMAR_CATEGORIES = {
   // === GROUP 1: 文法・基本文型 (grammar) ===
@@ -831,6 +832,13 @@ export const GRAMMAR_CATEGORIES = {
     ]
   }
 };
+
+// 追加例文（学習パート増量分）を各カテゴリにマージする
+Object.entries(ADDITIONAL_EXAMPLES).forEach(([key, examples]) => {
+  if (GRAMMAR_CATEGORIES[key]) {
+    GRAMMAR_CATEGORIES[key].examples.push(...examples);
+  }
+});
 
 // 設定画面・学習画面で使う文法グループ定義
 export const GRAMMAR_GROUPS = {
