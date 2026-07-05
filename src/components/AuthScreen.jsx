@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Mail, Lock, LogIn, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Mail, Lock, LogIn, UserPlus, AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 const MIN_PASSWORD_LENGTH = 6;
@@ -26,26 +26,43 @@ function translateAuthError(message) {
 }
 
 export default function AuthScreen() {
-  const [mode, setMode] = useState('login'); // 'login' | 'signup'
+  const [mode, setMode] = useState('login'); // 'login' | 'signup' | 'reset'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const switchMode = nextMode => {
+    setMode(nextMode);
+    setErrorMessage('');
+    setInfoMessage('');
+  };
+
   const handleSubmit = async event => {
     event.preventDefault();
     setErrorMessage('');
     setInfoMessage('');
 
-    if (password.length < MIN_PASSWORD_LENGTH) {
+    if (mode !== 'reset' && password.length < MIN_PASSWORD_LENGTH) {
       setErrorMessage(`パスワードは${MIN_PASSWORD_LENGTH}文字以上で入力してください。`);
       return;
     }
 
     setIsSubmitting(true);
     try {
-      if (mode === 'signup') {
+      if (mode === 'reset') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin
+        });
+        if (error) {
+          setErrorMessage(translateAuthError(error.message));
+        } else {
+          setInfoMessage(
+            'このメールアドレス宛にパスワード再設定リンクを送信しました（該当アカウントが存在する場合）。メール内のリンクを開いて新しいパスワードを設定してください。'
+          );
+        }
+      } else if (mode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -56,9 +73,15 @@ export default function AuthScreen() {
           setErrorMessage(translateAuthError(error.message));
         } else if (data.session) {
           // メール確認が無効な場合はそのままログイン状態になる
+        } else if (data.user && data.user.identities?.length === 0) {
+          // Supabaseは列挙攻撃対策のため、登録済みメールでも200を返しつつ
+          // identitiesを空配列にする（実際には何も起きていない）
+          setErrorMessage(
+            'このメールアドレスは既に登録されています。ログインするか、パスワードをお忘れの場合は再設定してください。'
+          );
         } else {
           setInfoMessage(
-            '確認メールを送信しました。メール内のリンクをクリックして登録を完了してください。'
+            '確認メールを送信しました。メール内のリンクをクリックして登録を完了してください（届かない場合は迷惑メールフォルダもご確認ください）。'
           );
         }
       } else {
@@ -91,25 +114,29 @@ export default function AuthScreen() {
             </p>
           </div>
           <p className="text-xs text-slate-400">
-            学習データを保存するため、ログインまたは新規登録してください。
+            {mode === 'reset'
+              ? 'パスワードを再設定するメールアドレスを入力してください。'
+              : '学習データを保存するため、ログインまたは新規登録してください。'}
           </p>
         </div>
 
-        {/* ログイン / 新規登録 タブ */}
-        <div className="flex gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
-          <button
-            onClick={() => { setMode('login'); setErrorMessage(''); setInfoMessage(''); }}
-            className={`flex-1 py-2.5 text-center rounded-lg font-bold text-xs transition ${mode === 'login' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            ログイン
-          </button>
-          <button
-            onClick={() => { setMode('signup'); setErrorMessage(''); setInfoMessage(''); }}
-            className={`flex-1 py-2.5 text-center rounded-lg font-bold text-xs transition ${mode === 'signup' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            新規登録
-          </button>
-        </div>
+        {/* ログイン / 新規登録 タブ（パスワード再設定時は非表示） */}
+        {mode !== 'reset' && (
+          <div className="flex gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+            <button
+              onClick={() => switchMode('login')}
+              className={`flex-1 py-2.5 text-center rounded-lg font-bold text-xs transition ${mode === 'login' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              ログイン
+            </button>
+            <button
+              onClick={() => switchMode('signup')}
+              className={`flex-1 py-2.5 text-center rounded-lg font-bold text-xs transition ${mode === 'signup' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              新規登録
+            </button>
+          </div>
+        )}
 
         {/* 入力フォーム */}
         <form onSubmit={handleSubmit} className="bg-slate-900/40 border border-slate-900 rounded-2xl p-6 space-y-4">
@@ -143,22 +170,34 @@ export default function AuthScreen() {
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label htmlFor="password" className="text-xs font-bold text-slate-400">パスワード（{MIN_PASSWORD_LENGTH}文字以上）</label>
-            <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 focus-within:border-indigo-500 rounded-xl px-3 py-2.5 transition">
-              <Lock className="w-4 h-4 text-slate-500" />
-              <input
-                id="password"
-                type="password"
-                required
-                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="bg-transparent border-none outline-none text-sm w-full text-slate-200 placeholder-slate-600"
-              />
+          {mode !== 'reset' && (
+            <div className="space-y-1.5">
+              <label htmlFor="password" className="text-xs font-bold text-slate-400">パスワード（{MIN_PASSWORD_LENGTH}文字以上）</label>
+              <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 focus-within:border-indigo-500 rounded-xl px-3 py-2.5 transition">
+                <Lock className="w-4 h-4 text-slate-500" />
+                <input
+                  id="password"
+                  type="password"
+                  required
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="bg-transparent border-none outline-none text-sm w-full text-slate-200 placeholder-slate-600"
+                />
+              </div>
             </div>
-          </div>
+          )}
+
+          {mode === 'login' && (
+            <button
+              type="button"
+              onClick={() => switchMode('reset')}
+              className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 transition"
+            >
+              パスワードをお忘れですか？
+            </button>
+          )}
 
           <button
             type="submit"
@@ -172,6 +211,11 @@ export default function AuthScreen() {
                 <LogIn className="w-4 h-4" />
                 ログイン
               </>
+            ) : mode === 'reset' ? (
+              <>
+                <KeyRound className="w-4 h-4" />
+                再設定メールを送信
+              </>
             ) : (
               <>
                 <UserPlus className="w-4 h-4" />
@@ -179,6 +223,16 @@ export default function AuthScreen() {
               </>
             )}
           </button>
+
+          {mode === 'reset' && (
+            <button
+              type="button"
+              onClick={() => switchMode('login')}
+              className="w-full text-center text-[11px] font-bold text-slate-400 hover:text-slate-200 transition"
+            >
+              ログイン画面に戻る
+            </button>
+          )}
         </form>
       </div>
     </div>

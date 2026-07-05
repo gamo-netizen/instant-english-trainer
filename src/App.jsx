@@ -10,6 +10,7 @@ import {
   QUESTION_LOOKUP
 } from './data/grammarData';
 import AuthScreen from './components/AuthScreen';
+import UpdatePasswordScreen from './components/UpdatePasswordScreen';
 import Header from './components/Header';
 import StudyScreen from './components/StudyScreen';
 import SetupScreen from './components/SetupScreen';
@@ -81,6 +82,7 @@ function questionFromRow(row) {
 export default function App() {
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   // 画面: 'setup' | 'quiz' | 'stats' | 'study'
   const [screen, setScreen] = useState('setup');
@@ -111,8 +113,12 @@ export default function App() {
       setSession(data.session);
       setAuthReady(true);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
+      // パスワード再設定リンクからの遷移時は、通常画面ではなく再設定フォームを表示する
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true);
+      }
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -372,6 +378,10 @@ export default function App() {
         <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
       </div>
     );
+  }
+
+  if (isPasswordRecovery) {
+    return <UpdatePasswordScreen onComplete={() => setIsPasswordRecovery(false)} />;
   }
 
   if (!session) {
